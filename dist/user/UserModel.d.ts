@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-declare const User: mongoose.Model<{
+declare const UserModel: mongoose.Model<{
     username: string;
     password: string;
     count: number;
@@ -90,5 +90,5 @@ declare const User: mongoose.Model<{
 } & {
     __v: number;
 }>;
-export default User;
+export default UserModel;
 //# sourceMappingURL=UserModel.d.ts.map

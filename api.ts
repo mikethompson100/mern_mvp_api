@@ -14,11 +14,11 @@ if (!process.env.PORT) {
 mongoose.connect(process.env.DB_URL);
 
 const app = express();
-/* const corsMiddleware = cors();
-app.use(corsMiddleware); */
+const corsMiddleware = cors();
+app.use(corsMiddleware);
 
 app.use(express.json());
-/* app.use('/user', userRouter); */
+app.use('/users', userRouter);
 
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on http://localhost:${process.env.PORT}`);
