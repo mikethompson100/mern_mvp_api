@@ -19,6 +19,7 @@ app.use(corsMiddleware);
 
 app.use(express.json());
 app.use('/users', userRouter);
+app.use("/getusers", userRouter);
 
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on http://localhost:${process.env.PORT}`);

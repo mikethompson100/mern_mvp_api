@@ -21,6 +21,7 @@ const corsMiddleware = (0, cors_1.default)();
 app.use(corsMiddleware);
 app.use(express_1.default.json());
 app.use('/users', userRouter_1.default);
+app.use("/getusers", userRouter_1.default);
 app.listen(process.env.PORT, () => {
     console.log(`Server is running on http://localhost:${process.env.PORT}`);
 });
