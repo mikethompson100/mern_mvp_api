@@ -2,6 +2,7 @@ import { request, Router } from 'express';
 import UserModel from './UserModel';
 import bcrypt from "bcryptjs";
 import { sign, verify } from "jsonwebtoken";
+import authenticate from './authenticate';
 const userRouter = Router();
 
 // Register User
@@ -9,16 +10,49 @@ userRouter.post('/', async (req, res) => {
   try {
     // Check if the user already exists
     const existingUser = await UserModel.findOne({ username: req.body.username });
+
     if (existingUser) {
-      throw new Error("User name taken.")
+      return res.status(400).json({
+        message: "User already exists"
+      });
     }
     // Convert password to hashed string
     const hashed = bcrypt.hashSync(req.body.password, 10);
-    await UserModel.create({ username: req.body.username, password: hashed });
-    return res.json({ ok: true });
+    const newuser = await UserModel.create({ username: req.body.username, password: hashed });
+
+    // Get token for newly created user and redirect to /dashboard page
+    // Create the payload to embed inside the token
+    const data = { userId: newuser.id };
+    // Ensure the secret signature exists in environment variables before signing
+    if (!process.env.SIGNATURE) {
+      throw new Error("Signature undefined")
+    }
+    // Sign the payload with the secret to generate a JWT, expiring in 30 minutes
+    const token = sign(
+      data,
+      process.env.SIGNATURE,
+      { expiresIn: "1m" }
+    )
+    // Send the token back to the client as a JSON response
+    return res.json({ token });
   }
   catch (error) {
     res.status(500).json({ message: "Error registering" });
+  }
+});
+
+// Delete User
+userRouter.delete('/', async (req, res) => {
+  try {
+    // Confirm current user
+    const user = await authenticate(req.headers.authorization);
+
+    // Find user to delete
+    await UserModel.deleteOne({ username: user.username });
+    return res.json({ ok: true });
+  }
+  catch (error) {
+    res.status(500).json({ message: "Error deleting user" });
   }
 });
 
@@ -38,13 +72,18 @@ userRouter.post('/login', async (req, res) => {
   try {
     // Find username
     const user = await UserModel.findOne({ username: req.body.username });
+
     if (!user) {
-      throw new Error("Username not found.")
+      return res.status(400).json({
+        message: "Invalid credentials"
+      });
     }
     // Once username is found, match the user password to the db password
     const match = bcrypt.compareSync(req.body.password, user.password);
     if (!match) {
-      throw new Error("Password does not match.")
+      return res.status(400).json({
+        message: "Invalid credentials"
+      });
     }
 
     // Confirm Identity
@@ -58,42 +97,28 @@ userRouter.post('/login', async (req, res) => {
     const token = sign(
       data,
       process.env.SIGNATURE,
-      { expiresIn: "30m" }
+      { expiresIn: "1m" }
     )
     // Send the token back to the client as a JSON response
     return res.json({ token });
   }
   catch (error) {
-    console.error("Login error:", error); 
+    console.error("Login error:", error);
     res.status(500).json({ message: "Error authenticating" });
   }
 });
 
 userRouter.get('/identify', async (req, res) => {
   try {
-    const token = req.headers.authorization;
-    if (!token) {
-      throw new Error("Token missing")
-    }
-    if (!process.env.SIGNATURE) {
-      throw new Error("Signature undefined")
-    }
-    // String to Object
-    const data = verify(token, process.env.SIGNATURE);
-    if (typeof data === "string") {
-      throw new Error("Invalid token")
-    }
-    const user = await UserModel.findById(data.userId);
-    if (!user) {
-      throw new Error("User not found.")
-    }
+    const user = await authenticate(req.headers.authorization);
     return res.json({ user });
   }
   catch (error) {
-    console.error("Login error:", error); 
+    console.error("Login error:", error);
     res.status(500).json({ message: "Error identifying user" });
   }
 });
+
 
 
 export default userRouter;
