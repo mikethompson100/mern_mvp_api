@@ -31,7 +31,7 @@ userRouter.post('/', async (req, res) => {
     const token = sign(
       data,
       process.env.SIGNATURE,
-      { expiresIn: "1m" }
+      { expiresIn: "15m" }
     )
     // Send the token back to the client as a JSON response
     return res.json({ token });
@@ -55,17 +55,6 @@ userRouter.delete('/', async (req, res) => {
     res.status(500).json({ message: "Error deleting user" });
   }
 });
-
-/* 
-// Get users example
-userRouter.get("/", async (req, res) => {
-  try {
-    const users = await UserModel.find();
-    res.status(200).json(users);
-  } catch (error) {
-    res.status(500).json({ message: "Error retrieving users" });
-  }
-}); */
 
 // Login existing user
 userRouter.post('/login', async (req, res) => {
@@ -97,7 +86,7 @@ userRouter.post('/login', async (req, res) => {
     const token = sign(
       data,
       process.env.SIGNATURE,
-      { expiresIn: "1m" }
+      { expiresIn: "15m" }
     )
     // Send the token back to the client as a JSON response
     return res.json({ token });
@@ -115,6 +104,24 @@ userRouter.get('/identify', async (req, res) => {
   }
   catch (error) {
     console.error("Login error:", error);
+    res.status(500).json({ message: "Error identifying user" });
+  }
+});
+
+
+userRouter.patch('/count', async (req, res) => {
+  try {
+    const user = await UserModel.findOne({ username: req.body.username });
+    if (user) {
+      const updateUserCount = await UserModel.findByIdAndUpdate(
+        user._id,
+        { $inc: { count: 1 } },
+        { new: true }
+      );
+    }
+  }
+  catch (error) {
+    console.error("Unable to locate user for counter update:", error);
     res.status(500).json({ message: "Error identifying user" });
   }
 });
