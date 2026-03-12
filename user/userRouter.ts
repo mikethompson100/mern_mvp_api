@@ -119,6 +119,9 @@ userRouter.patch('/count', async (req, res) => {
         { new: true }
       );
     }
+    return res.status(200).json({
+      success: true
+    });
   }
   catch (error) {
     console.error("Unable to locate user for counter update:", error);
