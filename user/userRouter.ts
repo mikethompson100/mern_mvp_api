@@ -113,10 +113,9 @@ userRouter.patch('/count', async (req, res) => {
   try {
     const user = await UserModel.findOne({ username: req.body.username });
     if (user) {
-      const updateUserCount = await UserModel.findByIdAndUpdate(
+      await UserModel.findByIdAndUpdate(
         user._id,
-        { $inc: { count: 1 } },
-        { new: true }
+        { $inc: { count: 1 } }
       );
     }
     return res.status(200).json({
