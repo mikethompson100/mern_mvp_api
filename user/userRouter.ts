@@ -97,6 +97,7 @@ userRouter.post('/login', async (req, res) => {
   }
 });
 
+// Identify user
 userRouter.get('/identify', async (req, res) => {
   try {
     const user = await authenticate(req.headers.authorization);
@@ -108,7 +109,7 @@ userRouter.get('/identify', async (req, res) => {
   }
 });
 
-
+// Update user count
 userRouter.patch('/count', async (req, res) => {
   try {
     const user = await UserModel.findOne({ username: req.body.username });
@@ -127,6 +128,23 @@ userRouter.patch('/count', async (req, res) => {
     res.status(500).json({ message: "Error identifying user" });
   }
 });
+
+// OAuth endpoints
+userRouter.get('/google', async (req, res) => {
+  const base = "https://accounts.google.com/o/oauth2/v2/auth";
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    throw new Error("Google client id missing.")
+  }
+  const params = new URLSearchParams({
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    redirect_uri: "http://localhost:4000/auth/google/callback",
+    response_type: "code",
+    scope: "openid email profile"
+  })
+  const url = `${base}?${params}`;
+  res.redirect(url);
+});
+
 
 
 
