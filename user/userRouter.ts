@@ -129,7 +129,7 @@ userRouter.patch('/count', async (req, res) => {
   }
 });
 
-// OAuth endpoints
+// OAuth endpoints. Send to google login screen.
 userRouter.get('/google', async (req, res) => {
   const base = "https://accounts.google.com/o/oauth2/v2/auth";
   if (!process.env.GOOGLE_CLIENT_ID) {
@@ -137,7 +137,7 @@ userRouter.get('/google', async (req, res) => {
   }
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
-    redirect_uri: "http://localhost:4000/auth/google/callback",
+    redirect_uri: "http://localhost:4000/users/google/callback",
     response_type: "code",
     scope: "openid email profile"
   })
@@ -145,6 +145,43 @@ userRouter.get('/google', async (req, res) => {
   res.redirect(url);
 });
 
+userRouter.get('/google/callback', async (req, res) => {
+  // 'Our app authorizing', confirmation code
+  if (typeof req.query.code !== "string") {
+    throw new Error("Invalid code format.")
+  }
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    throw new Error("Google client id missing.")
+  }
+  if (!process.env.GOOGLE_CLIENT_SECRET) {
+    throw new Error("Google client secret missing.")
+  }
+  const accessTokenURL = "https://oauth2.googleapis.com/token";
+  const accessTokenResponse = await fetch(accessTokenURL, {
+    method: "POST",
+    headers: {
+      'Content-Type': "application/x-www-form-urlencoded"
+    },
+    body: new URLSearchParams({
+      code: req.query.code,
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      grant_type: "authorization_code",
+      redirect_uri: "http://localhost:4000/users/google/callback"
+    })
+  })
+
+  const accessTokenData = await accessTokenResponse.json();
+  const profileUrl = "https://www.googleapis.com/oauth2/v3/userinfo";
+  const profileResponse = await fetch(profileUrl, {
+    headers: {
+      Authorization: `Bearer ${accessTokenData.access_token}`
+    }
+  });
+  const profileData = await profileResponse.json();
+  console.log("profileData", profileData);
+
+})
 
 
 
