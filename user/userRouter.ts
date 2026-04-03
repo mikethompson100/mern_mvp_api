@@ -18,7 +18,7 @@ userRouter.post('/', async (req, res) => {
     }
     // Convert password to hashed string
     const hashed = bcrypt.hashSync(req.body.password, 10);
-    const newuser = await UserModel.create({ username: req.body.username, password: hashed });
+    const newuser = await UserModel.create({ email: req.body.email, password: hashed });
 
     // Get token for newly created user and redirect to /dashboard page
     // Create the payload to embed inside the token
@@ -48,7 +48,7 @@ userRouter.delete('/', async (req, res) => {
     const user = await authenticate(req.headers.authorization);
 
     // Find user to delete
-    await UserModel.deleteOne({ username: user.username });
+    await UserModel.deleteOne({ email: user.email });
     return res.json({ ok: true });
   }
   catch (error) {
@@ -68,6 +68,11 @@ userRouter.post('/login', async (req, res) => {
       });
     }
     // Once username is found, match the user password to the db password
+     if (!user.password) {
+      return res.status(400).json({
+        message: "Password does not exist. Encourage user to use google login."
+      });
+     }
     const match = bcrypt.compareSync(req.body.password, user.password);
     if (!match) {
       return res.status(400).json({
@@ -146,41 +151,63 @@ userRouter.get('/google', async (req, res) => {
 });
 
 userRouter.get('/google/callback', async (req, res) => {
-  // 'Our app authorizing', confirmation code
-  if (typeof req.query.code !== "string") {
-    throw new Error("Invalid code format.")
-  }
-  if (!process.env.GOOGLE_CLIENT_ID) {
-    throw new Error("Google client id missing.")
-  }
-  if (!process.env.GOOGLE_CLIENT_SECRET) {
-    throw new Error("Google client secret missing.")
-  }
-  const accessTokenURL = "https://oauth2.googleapis.com/token";
-  const accessTokenResponse = await fetch(accessTokenURL, {
-    method: "POST",
-    headers: {
-      'Content-Type': "application/x-www-form-urlencoded"
-    },
-    body: new URLSearchParams({
-      code: req.query.code,
-      client_id: process.env.GOOGLE_CLIENT_ID,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      grant_type: "authorization_code",
-      redirect_uri: "http://localhost:4000/users/google/callback"
-    })
-  })
-
-  const accessTokenData = await accessTokenResponse.json();
-  const profileUrl = "https://www.googleapis.com/oauth2/v3/userinfo";
-  const profileResponse = await fetch(profileUrl, {
-    headers: {
-      Authorization: `Bearer ${accessTokenData.access_token}`
+  try {
+    // 'Our app authorizing', confirmation code
+    if (typeof req.query.code !== "string") {
+      throw new Error("Invalid code format.")
     }
-  });
-  const profileData = await profileResponse.json();
-  console.log("profileData", profileData);
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      throw new Error("Google client id missing.")
+    }
+    if (!process.env.GOOGLE_CLIENT_SECRET) {
+      throw new Error("Google client secret missing.")
+    }
+    const accessTokenURL = "https://oauth2.googleapis.com/token";
+    const accessTokenResponse = await fetch(accessTokenURL, {
+      method: "POST",
+      headers: {
+        'Content-Type': "application/x-www-form-urlencoded"
+      },
+      body: new URLSearchParams({
+        code: req.query.code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        grant_type: "authorization_code",
+        redirect_uri: "http://localhost:4000/users/google/callback"
+      })
+    })
 
+    const accessTokenData = await accessTokenResponse.json();
+    const profileUrl = "https://www.googleapis.com/oauth2/v3/userinfo";
+    const profileResponse = await fetch(profileUrl, {
+      headers: {
+        Authorization: `Bearer ${accessTokenData.access_token}`
+      }
+    });
+    const profileData = await profileResponse.json();
+    console.log("profileData", profileData);
+
+    // When google id is confirmed, store new user or confirm profile 
+    // Find username
+    const user = await UserModel.findOne({ googleId: profileData.sub });
+
+    if (!user) {
+      const newuser = await UserModel.create({ email: profileData.email, googleId: profileData.sub });
+      console.log("see new user:", newuser);
+    }
+
+    // if google id matches a user in db
+    // else if no match then add them to db
+
+
+    // whether first time or current user give a token
+
+
+  }
+
+  catch {
+
+  }
 })
 
 
